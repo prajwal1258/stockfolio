@@ -1,0 +1,410 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Plus, 
+  Search, 
+  LogOut,
+  Briefcase,
+  DollarSign,
+  BarChart3,
+  Edit2,
+  Trash2,
+  X
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+
+interface Stock {
+  id: string;
+  symbol: string;
+  name: string;
+  quantity: number;
+  avgPrice: number;
+  currentPrice: number;
+}
+
+const mockStocks: Stock[] = [
+  { id: "1", symbol: "AAPL", name: "Apple Inc.", quantity: 50, avgPrice: 175.50, currentPrice: 189.25 },
+  { id: "2", symbol: "GOOGL", name: "Alphabet Inc.", quantity: 25, avgPrice: 138.20, currentPrice: 142.80 },
+  { id: "3", symbol: "MSFT", name: "Microsoft Corp.", quantity: 40, avgPrice: 380.00, currentPrice: 415.50 },
+  { id: "4", symbol: "TSLA", name: "Tesla Inc.", quantity: 15, avgPrice: 245.00, currentPrice: 238.75 },
+  { id: "5", symbol: "AMZN", name: "Amazon.com Inc.", quantity: 30, avgPrice: 178.50, currentPrice: 185.20 },
+];
+
+const Dashboard = () => {
+  const [stocks, setStocks] = useState<Stock[]>(mockStocks);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingStock, setEditingStock] = useState<Stock | null>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    symbol: "",
+    name: "",
+    quantity: "",
+    avgPrice: "",
+    currentPrice: "",
+  });
+
+  const filteredStocks = stocks.filter(stock => 
+    stock.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    stock.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalValue = stocks.reduce((sum, stock) => sum + (stock.quantity * stock.currentPrice), 0);
+  const totalInvested = stocks.reduce((sum, stock) => sum + (stock.quantity * stock.avgPrice), 0);
+  const totalGain = totalValue - totalInvested;
+  const totalGainPercent = (totalGain / totalInvested) * 100;
+
+  const handleAddStock = () => {
+    if (!formData.symbol || !formData.name || !formData.quantity || !formData.avgPrice || !formData.currentPrice) {
+      toast.error("Please fill all fields");
+      return;
+    }
+
+    const newStock: Stock = {
+      id: Date.now().toString(),
+      symbol: formData.symbol.toUpperCase(),
+      name: formData.name,
+      quantity: Number(formData.quantity),
+      avgPrice: Number(formData.avgPrice),
+      currentPrice: Number(formData.currentPrice),
+    };
+
+    setStocks([...stocks, newStock]);
+    setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "" });
+    setIsAddOpen(false);
+    toast.success("Stock added successfully");
+  };
+
+  const handleUpdateStock = () => {
+    if (!editingStock || !formData.quantity || !formData.avgPrice || !formData.currentPrice) {
+      toast.error("Please fill all fields");
+      return;
+    }
+
+    setStocks(stocks.map(stock => 
+      stock.id === editingStock.id 
+        ? { 
+            ...stock, 
+            quantity: Number(formData.quantity),
+            avgPrice: Number(formData.avgPrice),
+            currentPrice: Number(formData.currentPrice),
+          }
+        : stock
+    ));
+    
+    setEditingStock(null);
+    setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "" });
+    toast.success("Stock updated successfully");
+  };
+
+  const handleDeleteStock = (id: string) => {
+    setStocks(stocks.filter(stock => stock.id !== id));
+    toast.success("Stock removed from portfolio");
+  };
+
+  const openEditModal = (stock: Stock) => {
+    setEditingStock(stock);
+    setFormData({
+      symbol: stock.symbol,
+      name: stock.name,
+      quantity: stock.quantity.toString(),
+      avgPrice: stock.avgPrice.toString(),
+      currentPrice: stock.currentPrice.toString(),
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <span className="font-display text-xl font-bold">StockFolio</span>
+          </Link>
+          
+          <Link to="/">
+            <Button variant="ghost" size="sm">
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </Link>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-6 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <StatCard 
+            icon={<Briefcase className="w-5 h-5" />}
+            label="Portfolio Value"
+            value={`$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          />
+          <StatCard 
+            icon={<DollarSign className="w-5 h-5" />}
+            label="Total Invested"
+            value={`$${totalInvested.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          />
+          <StatCard 
+            icon={<BarChart3 className="w-5 h-5" />}
+            label="Total Gain/Loss"
+            value={`${totalGain >= 0 ? '+' : ''}$${totalGain.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+            subValue={`${totalGainPercent >= 0 ? '+' : ''}${totalGainPercent.toFixed(2)}%`}
+            isPositive={totalGain >= 0}
+          />
+        </div>
+
+        {/* Actions Bar */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input 
+              placeholder="Search stocks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button variant="hero">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Stock
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="glass">
+              <DialogHeader>
+                <DialogTitle className="font-display text-xl">Add New Stock</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Symbol</Label>
+                    <Input 
+                      placeholder="AAPL"
+                      value={formData.symbol}
+                      onChange={(e) => setFormData({...formData, symbol: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quantity</Label>
+                    <Input 
+                      type="number"
+                      placeholder="100"
+                      value={formData.quantity}
+                      onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Company Name</Label>
+                  <Input 
+                    placeholder="Apple Inc."
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Avg. Buy Price ($)</Label>
+                    <Input 
+                      type="number"
+                      step="0.01"
+                      placeholder="150.00"
+                      value={formData.avgPrice}
+                      onChange={(e) => setFormData({...formData, avgPrice: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Current Price ($)</Label>
+                    <Input 
+                      type="number"
+                      step="0.01"
+                      placeholder="175.00"
+                      value={formData.currentPrice}
+                      onChange={(e) => setFormData({...formData, currentPrice: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <Button variant="hero" className="w-full" onClick={handleAddStock}>
+                  Add to Portfolio
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Stocks Table */}
+        <div className="glass rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Stock</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Quantity</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Avg. Price</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Current Price</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Value</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Gain/Loss</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStocks.map((stock) => {
+                  const value = stock.quantity * stock.currentPrice;
+                  const invested = stock.quantity * stock.avgPrice;
+                  const gain = value - invested;
+                  const gainPercent = (gain / invested) * 100;
+                  const isPositive = gain >= 0;
+
+                  return (
+                    <tr key={stock.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                      <td className="p-4">
+                        <div>
+                          <p className="font-semibold">{stock.symbol}</p>
+                          <p className="text-sm text-muted-foreground">{stock.name}</p>
+                        </div>
+                      </td>
+                      <td className="p-4 text-right font-medium">{stock.quantity}</td>
+                      <td className="p-4 text-right">${stock.avgPrice.toFixed(2)}</td>
+                      <td className="p-4 text-right">${stock.currentPrice.toFixed(2)}</td>
+                      <td className="p-4 text-right font-medium">${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                      <td className="p-4 text-right">
+                        <div className={`flex items-center justify-end gap-1 ${isPositive ? 'text-success' : 'text-destructive'}`}>
+                          {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                          <span className="font-medium">
+                            {isPositive ? '+' : ''}{gainPercent.toFixed(2)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => openEditModal(stock)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleDeleteStock(stock.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          
+          {filteredStocks.length === 0 && (
+            <div className="p-12 text-center">
+              <p className="text-muted-foreground">No stocks found. Add your first stock to get started!</p>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Edit Modal */}
+      <Dialog open={!!editingStock} onOpenChange={() => setEditingStock(null)}>
+        <DialogContent className="glass">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">
+              Edit {editingStock?.symbol}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Quantity</Label>
+              <Input 
+                type="number"
+                value={formData.quantity}
+                onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Avg. Buy Price ($)</Label>
+                <Input 
+                  type="number"
+                  step="0.01"
+                  value={formData.avgPrice}
+                  onChange={(e) => setFormData({...formData, avgPrice: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Current Price ($)</Label>
+                <Input 
+                  type="number"
+                  step="0.01"
+                  value={formData.currentPrice}
+                  onChange={(e) => setFormData({...formData, currentPrice: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setEditingStock(null)}>
+                Cancel
+              </Button>
+              <Button variant="hero" className="flex-1" onClick={handleUpdateStock}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+const StatCard = ({ 
+  icon, 
+  label, 
+  value, 
+  subValue,
+  isPositive 
+}: { 
+  icon: React.ReactNode; 
+  label: string; 
+  value: string;
+  subValue?: string;
+  isPositive?: boolean;
+}) => (
+  <div className="glass rounded-2xl p-6">
+    <div className="flex items-center gap-3 mb-3">
+      <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-primary">
+        {icon}
+      </div>
+      <span className="text-sm text-muted-foreground">{label}</span>
+    </div>
+    <p className="font-display text-2xl font-bold">{value}</p>
+    {subValue && (
+      <p className={`text-sm mt-1 ${isPositive ? 'text-success' : 'text-destructive'}`}>
+        {subValue}
+      </p>
+    )}
+  </div>
+);
+
+export default Dashboard;
