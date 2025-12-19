@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, Eye, EyeOff, ArrowLeft, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
@@ -12,22 +13,49 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { signUp, user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password || !confirmPassword) {
+      toast.error("Please fill in all fields");
+      return;
+    }
     
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
     
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    
     setIsLoading(true);
     
-    // Placeholder - will be replaced with actual auth
-    setTimeout(() => {
-      toast.info("Authentication will be available once backend is connected");
-      setIsLoading(false);
-    }, 1000);
+    const { error } = await signUp(email, password);
+    
+    if (error) {
+      if (error.message.includes("already registered")) {
+        toast.error("This email is already registered. Please sign in instead.");
+      } else {
+        toast.error(error.message || "Failed to create account");
+      }
+    } else {
+      toast.success("Account created successfully!");
+      navigate("/dashboard");
+    }
+    
+    setIsLoading(false);
   };
 
   const passwordRequirements = [
@@ -35,6 +63,14 @@ const Signup = () => {
     { met: /[A-Z]/.test(password), text: "One uppercase letter" },
     { met: /[0-9]/.test(password), text: "One number" },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-6 relative overflow-hidden">
