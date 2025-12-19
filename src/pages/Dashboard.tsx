@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,10 +12,9 @@ import {
   DollarSign,
   BarChart3,
   Edit2,
-  Trash2,
-  X
+  Trash2
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -24,29 +23,26 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Stock {
   id: string;
   symbol: string;
   name: string;
   quantity: number;
-  avgPrice: number;
-  currentPrice: number;
+  avg_price: number;
+  current_price: number;
 }
 
-const mockStocks: Stock[] = [
-  { id: "1", symbol: "AAPL", name: "Apple Inc.", quantity: 50, avgPrice: 175.50, currentPrice: 189.25 },
-  { id: "2", symbol: "GOOGL", name: "Alphabet Inc.", quantity: 25, avgPrice: 138.20, currentPrice: 142.80 },
-  { id: "3", symbol: "MSFT", name: "Microsoft Corp.", quantity: 40, avgPrice: 380.00, currentPrice: 415.50 },
-  { id: "4", symbol: "TSLA", name: "Tesla Inc.", quantity: 15, avgPrice: 245.00, currentPrice: 238.75 },
-  { id: "5", symbol: "AMZN", name: "Amazon.com Inc.", quantity: 30, avgPrice: 178.50, currentPrice: 185.20 },
-];
-
 const Dashboard = () => {
-  const [stocks, setStocks] = useState<Stock[]>(mockStocks);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingStock, setEditingStock] = useState<Stock | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user, signOut, loading } = useAuth();
+  const navigate = useNavigate();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -57,62 +53,101 @@ const Dashboard = () => {
     currentPrice: "",
   });
 
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchStocks();
+    }
+  }, [user]);
+
+  const fetchStocks = async () => {
+    const { data, error } = await supabase
+      .from("stocks")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Failed to load stocks");
+    } else {
+      setStocks(data || []);
+    }
+    setIsLoading(false);
+  };
+
   const filteredStocks = stocks.filter(stock => 
     stock.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
     stock.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalValue = stocks.reduce((sum, stock) => sum + (stock.quantity * stock.currentPrice), 0);
-  const totalInvested = stocks.reduce((sum, stock) => sum + (stock.quantity * stock.avgPrice), 0);
+  const totalValue = stocks.reduce((sum, stock) => sum + (stock.quantity * stock.current_price), 0);
+  const totalInvested = stocks.reduce((sum, stock) => sum + (stock.quantity * stock.avg_price), 0);
   const totalGain = totalValue - totalInvested;
-  const totalGainPercent = (totalGain / totalInvested) * 100;
+  const totalGainPercent = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
 
-  const handleAddStock = () => {
+  const handleAddStock = async () => {
     if (!formData.symbol || !formData.name || !formData.quantity || !formData.avgPrice || !formData.currentPrice) {
       toast.error("Please fill all fields");
       return;
     }
 
-    const newStock: Stock = {
-      id: Date.now().toString(),
+    const { error } = await supabase.from("stocks").insert({
+      user_id: user?.id,
       symbol: formData.symbol.toUpperCase(),
       name: formData.name,
       quantity: Number(formData.quantity),
-      avgPrice: Number(formData.avgPrice),
-      currentPrice: Number(formData.currentPrice),
-    };
+      avg_price: Number(formData.avgPrice),
+      current_price: Number(formData.currentPrice),
+    });
 
-    setStocks([...stocks, newStock]);
-    setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "" });
-    setIsAddOpen(false);
-    toast.success("Stock added successfully");
+    if (error) {
+      toast.error("Failed to add stock");
+    } else {
+      setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "" });
+      setIsAddOpen(false);
+      toast.success("Stock added successfully");
+      fetchStocks();
+    }
   };
 
-  const handleUpdateStock = () => {
+  const handleUpdateStock = async () => {
     if (!editingStock || !formData.quantity || !formData.avgPrice || !formData.currentPrice) {
       toast.error("Please fill all fields");
       return;
     }
 
-    setStocks(stocks.map(stock => 
-      stock.id === editingStock.id 
-        ? { 
-            ...stock, 
-            quantity: Number(formData.quantity),
-            avgPrice: Number(formData.avgPrice),
-            currentPrice: Number(formData.currentPrice),
-          }
-        : stock
-    ));
-    
-    setEditingStock(null);
-    setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "" });
-    toast.success("Stock updated successfully");
+    const { error } = await supabase
+      .from("stocks")
+      .update({
+        quantity: Number(formData.quantity),
+        avg_price: Number(formData.avgPrice),
+        current_price: Number(formData.currentPrice),
+      })
+      .eq("id", editingStock.id);
+
+    if (error) {
+      toast.error("Failed to update stock");
+    } else {
+      setEditingStock(null);
+      setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "" });
+      toast.success("Stock updated successfully");
+      fetchStocks();
+    }
   };
 
-  const handleDeleteStock = (id: string) => {
-    setStocks(stocks.filter(stock => stock.id !== id));
-    toast.success("Stock removed from portfolio");
+  const handleDeleteStock = async (id: string) => {
+    const { error } = await supabase.from("stocks").delete().eq("id", id);
+
+    if (error) {
+      toast.error("Failed to remove stock");
+    } else {
+      toast.success("Stock removed from portfolio");
+      fetchStocks();
+    }
   };
 
   const openEditModal = (stock: Stock) => {
@@ -121,10 +156,23 @@ const Dashboard = () => {
       symbol: stock.symbol,
       name: stock.name,
       quantity: stock.quantity.toString(),
-      avgPrice: stock.avgPrice.toString(),
-      currentPrice: stock.currentPrice.toString(),
+      avgPrice: stock.avg_price.toString(),
+      currentPrice: stock.current_price.toString(),
     });
   };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  if (loading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -138,12 +186,13 @@ const Dashboard = () => {
             <span className="font-display text-xl font-bold">StockFolio</span>
           </Link>
           
-          <Link to="/">
-            <Button variant="ghost" size="sm">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground hidden sm:inline">{user?.email}</span>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
-          </Link>
+          </div>
         </div>
       </header>
 
@@ -267,10 +316,10 @@ const Dashboard = () => {
               </thead>
               <tbody>
                 {filteredStocks.map((stock) => {
-                  const value = stock.quantity * stock.currentPrice;
-                  const invested = stock.quantity * stock.avgPrice;
+                  const value = stock.quantity * stock.current_price;
+                  const invested = stock.quantity * stock.avg_price;
                   const gain = value - invested;
-                  const gainPercent = (gain / invested) * 100;
+                  const gainPercent = invested > 0 ? (gain / invested) * 100 : 0;
                   const isPositive = gain >= 0;
 
                   return (
@@ -282,8 +331,8 @@ const Dashboard = () => {
                         </div>
                       </td>
                       <td className="p-4 text-right font-medium">{stock.quantity}</td>
-                      <td className="p-4 text-right">${stock.avgPrice.toFixed(2)}</td>
-                      <td className="p-4 text-right">${stock.currentPrice.toFixed(2)}</td>
+                      <td className="p-4 text-right">${Number(stock.avg_price).toFixed(2)}</td>
+                      <td className="p-4 text-right">${Number(stock.current_price).toFixed(2)}</td>
                       <td className="p-4 text-right font-medium">${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                       <td className="p-4 text-right">
                         <div className={`flex items-center justify-end gap-1 ${isPositive ? 'text-success' : 'text-destructive'}`}>
@@ -320,7 +369,11 @@ const Dashboard = () => {
           
           {filteredStocks.length === 0 && (
             <div className="p-12 text-center">
-              <p className="text-muted-foreground">No stocks found. Add your first stock to get started!</p>
+              <p className="text-muted-foreground">
+                {stocks.length === 0 
+                  ? "No stocks yet. Add your first stock to get started!"
+                  : "No stocks found matching your search."}
+              </p>
             </div>
           )}
         </div>
