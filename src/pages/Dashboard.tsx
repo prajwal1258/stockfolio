@@ -13,9 +13,11 @@ import {
   BarChart3,
   Edit2,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  LineChart
 } from "lucide-react";
 import { useStockPrices } from "@/hooks/useStockPrices";
+import { StockPriceChart } from "@/components/StockPriceChart";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -43,6 +45,7 @@ const Dashboard = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingStock, setEditingStock] = useState<Stock | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedStock, setExpandedStock] = useState<string | null>(null);
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { updateStockPrices, isRefreshing } = useStockPrices();
@@ -350,45 +353,69 @@ const Dashboard = () => {
                   const gainPercent = invested > 0 ? (gain / invested) * 100 : 0;
                   const isPositive = gain >= 0;
 
+                  const isExpanded = expandedStock === stock.id;
+
                   return (
-                    <tr key={stock.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                      <td className="p-4">
-                        <div>
-                          <p className="font-semibold">{stock.symbol}</p>
-                          <p className="text-sm text-muted-foreground">{stock.name}</p>
-                        </div>
-                      </td>
-                      <td className="p-4 text-right font-medium">{stock.quantity}</td>
-                      <td className="p-4 text-right">${Number(stock.avg_price).toFixed(2)}</td>
-                      <td className="p-4 text-right">${Number(stock.current_price).toFixed(2)}</td>
-                      <td className="p-4 text-right font-medium">${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="p-4 text-right">
-                        <div className={`flex items-center justify-end gap-1 ${isPositive ? 'text-success' : 'text-destructive'}`}>
-                          {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                          <span className="font-medium">
-                            {isPositive ? '+' : ''}{gainPercent.toFixed(2)}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => openEditModal(stock)}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleDeleteStock(stock.id)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                    <>
+                      <tr key={stock.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setExpandedStock(isExpanded ? null : stock.id)}
+                            >
+                              <LineChart className={`w-4 h-4 transition-colors ${isExpanded ? 'text-primary' : 'text-muted-foreground'}`} />
+                            </Button>
+                            <div>
+                              <p className="font-semibold">{stock.symbol}</p>
+                              <p className="text-sm text-muted-foreground">{stock.name}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 text-right font-medium">{stock.quantity}</td>
+                        <td className="p-4 text-right">${Number(stock.avg_price).toFixed(2)}</td>
+                        <td className="p-4 text-right">${Number(stock.current_price).toFixed(2)}</td>
+                        <td className="p-4 text-right font-medium">${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td className="p-4 text-right">
+                          <div className={`flex items-center justify-end gap-1 ${isPositive ? 'text-success' : 'text-destructive'}`}>
+                            {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                            <span className="font-medium">
+                              {isPositive ? '+' : ''}{gainPercent.toFixed(2)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => openEditModal(stock)}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleDeleteStock(stock.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr key={`${stock.id}-chart`} className="border-b border-border/50 bg-secondary/10">
+                          <td colSpan={7} className="p-4">
+                            <div className="pl-11">
+                              <p className="text-sm text-muted-foreground mb-2">30-Day Price History</p>
+                              <StockPriceChart symbol={stock.symbol} />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   );
                 })}
               </tbody>
