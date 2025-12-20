@@ -12,8 +12,10 @@ import {
   DollarSign,
   BarChart3,
   Edit2,
-  Trash2
+  Trash2,
+  RefreshCw
 } from "lucide-react";
+import { useStockPrices } from "@/hooks/useStockPrices";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -43,6 +45,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
+  const { updateStockPrices, isRefreshing } = useStockPrices();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -161,6 +164,22 @@ const Dashboard = () => {
     });
   };
 
+  const handleRefreshPrices = async () => {
+    if (stocks.length === 0) {
+      toast.error("No stocks to refresh");
+      return;
+    }
+    
+    await updateStockPrices(
+      stocks.map(s => ({ id: s.id, symbol: s.symbol })),
+      (id, currentPrice) => {
+        setStocks(prev => prev.map(s => 
+          s.id === id ? { ...s, current_price: currentPrice } : s
+        ));
+      }
+    );
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
@@ -230,6 +249,15 @@ const Dashboard = () => {
             />
           </div>
           
+          <Button 
+            variant="outline" 
+            onClick={handleRefreshPrices}
+            disabled={isRefreshing || stocks.length === 0}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
+          </Button>
+
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
               <Button variant="hero">

@@ -1,1 +1,4 @@
 project_id = "mwryaitbhysbvmblkdch"
+
+[functions.fetch-stock-prices]
+verify_jwt = true
