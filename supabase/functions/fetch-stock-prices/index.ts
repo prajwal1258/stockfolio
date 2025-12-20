@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { symbols } = await req.json();
+    const { symbols, historical } = await req.json();
 
     if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
       return new Response(
@@ -23,9 +23,59 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Fetching prices for symbols: ${symbols.join(', ')}`);
+    console.log(`Fetching ${historical ? 'historical' : 'current'} prices for symbols: ${symbols.join(', ')}`);
 
-    // Fetch quotes for all symbols in parallel
+    // If historical data is requested, fetch candles
+    if (historical) {
+      const now = Math.floor(Date.now() / 1000);
+      const oneMonthAgo = now - (30 * 24 * 60 * 60);
+
+      const candlePromises = symbols.map(async (symbol: string) => {
+        try {
+          const response = await fetch(
+            `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${oneMonthAgo}&to=${now}&token=${FINNHUB_API_KEY}`
+          );
+          
+          if (!response.ok) {
+            console.error(`Failed to fetch candles for ${symbol}: ${response.status}`);
+            return { symbol, candles: [] };
+          }
+
+          const data = await response.json();
+          console.log(`${symbol} candle data status:`, data.s);
+
+          if (data.s !== 'ok' || !data.c) {
+            console.warn(`No candle data available for ${symbol}`);
+            return { symbol, candles: [] };
+          }
+
+          // Transform data: c = close prices, t = timestamps
+          const candles = data.t.map((timestamp: number, index: number) => ({
+            date: new Date(timestamp * 1000).toISOString().split('T')[0],
+            price: data.c[index],
+          }));
+
+          return { symbol, candles };
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`Error fetching candles for ${symbol}:`, error);
+          return { symbol, candles: [], error: errorMessage };
+        }
+      });
+
+      const results = await Promise.all(candlePromises);
+      const candles: Record<string, Array<{ date: string; price: number }>> = {};
+      for (const result of results) {
+        candles[result.symbol] = result.candles;
+      }
+
+      return new Response(
+        JSON.stringify({ candles }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Fetch current quotes for all symbols in parallel
     const quotePromises = symbols.map(async (symbol: string) => {
       try {
         const response = await fetch(
