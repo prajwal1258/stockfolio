@@ -6,6 +6,7 @@ const corsHeaders = {
 };
 
 const FINNHUB_API_KEY = Deno.env.get('FINNHUB_API_KEY');
+const ALPHA_VANTAGE_API_KEY = Deno.env.get('ALPHA_VANTAGE_API_KEY');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -25,40 +26,51 @@ serve(async (req) => {
 
     console.log(`Fetching ${historical ? 'historical' : 'current'} prices for symbols: ${symbols.join(', ')}`);
 
-    // If historical data is requested, fetch candles
+    // If historical data is requested, use Alpha Vantage
     if (historical) {
-      const now = Math.floor(Date.now() / 1000);
-      const oneMonthAgo = now - (30 * 24 * 60 * 60);
-
       const candlePromises = symbols.map(async (symbol: string) => {
         try {
           const response = await fetch(
-            `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${oneMonthAgo}&to=${now}&token=${FINNHUB_API_KEY}`
+            `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${ALPHA_VANTAGE_API_KEY}&outputsize=compact`
           );
           
           if (!response.ok) {
-            console.error(`Failed to fetch candles for ${symbol}: ${response.status}`);
+            console.error(`Failed to fetch historical data for ${symbol}: ${response.status}`);
             return { symbol, candles: [] };
           }
 
           const data = await response.json();
-          console.log(`${symbol} candle data status:`, data.s);
+          console.log(`${symbol} Alpha Vantage response keys:`, Object.keys(data));
 
-          if (data.s !== 'ok' || !data.c) {
-            console.warn(`No candle data available for ${symbol}`);
+          // Check for API limit or error messages
+          if (data['Note'] || data['Information']) {
+            console.warn(`Alpha Vantage API limit or info for ${symbol}:`, data['Note'] || data['Information']);
+            return { symbol, candles: [], error: 'API rate limit reached' };
+          }
+
+          if (data['Error Message']) {
+            console.error(`Alpha Vantage error for ${symbol}:`, data['Error Message']);
+            return { symbol, candles: [], error: data['Error Message'] };
+          }
+
+          const timeSeries = data['Time Series (Daily)'];
+          if (!timeSeries) {
+            console.warn(`No time series data for ${symbol}`);
             return { symbol, candles: [] };
           }
 
-          // Transform data: c = close prices, t = timestamps
-          const candles = data.t.map((timestamp: number, index: number) => ({
-            date: new Date(timestamp * 1000).toISOString().split('T')[0],
-            price: data.c[index],
+          // Get last 30 days of data
+          const dates = Object.keys(timeSeries).sort().slice(-30);
+          const candles = dates.map(date => ({
+            date,
+            price: parseFloat(timeSeries[date]['4. close']),
           }));
 
+          console.log(`${symbol}: Got ${candles.length} candles`);
           return { symbol, candles };
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.error(`Error fetching candles for ${symbol}:`, error);
+          console.error(`Error fetching historical data for ${symbol}:`, error);
           return { symbol, candles: [], error: errorMessage };
         }
       });
@@ -75,7 +87,7 @@ serve(async (req) => {
       );
     }
 
-    // Fetch current quotes for all symbols in parallel
+    // Fetch current quotes using Finnhub
     const quotePromises = symbols.map(async (symbol: string) => {
       try {
         const response = await fetch(
@@ -90,7 +102,6 @@ serve(async (req) => {
         const data = await response.json();
         console.log(`${symbol} quote data:`, data);
 
-        // Finnhub returns: c = current price, h = high, l = low, o = open, pc = previous close
         if (data.c === 0 && data.h === 0 && data.l === 0) {
           console.warn(`No data available for ${symbol}`);
           return { symbol, error: 'No data available' };
