@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +70,30 @@ const Dashboard = () => {
       fetchStocks();
     }
   }, [user]);
+
+  // Auto-refresh stock prices every 60 seconds
+  const refreshPrices = useCallback(async () => {
+    if (stocks.length === 0) return;
+    
+    await updateStockPrices(
+      stocks.map(s => ({ id: s.id, symbol: s.symbol })),
+      (id, currentPrice) => {
+        setStocks(prev => prev.map(s => 
+          s.id === id ? { ...s, current_price: currentPrice } : s
+        ));
+      }
+    );
+  }, [stocks, updateStockPrices]);
+
+  useEffect(() => {
+    if (stocks.length === 0) return;
+    
+    const interval = setInterval(() => {
+      refreshPrices();
+    }, 60000); // 60 seconds
+    
+    return () => clearInterval(interval);
+  }, [stocks.length, refreshPrices]);
 
   const fetchStocks = async () => {
     const { data, error } = await supabase
