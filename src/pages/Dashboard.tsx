@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -49,6 +50,7 @@ const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { updateStockPrices, isRefreshing } = useStockPrices();
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -86,14 +88,14 @@ const Dashboard = () => {
   }, [stocks, updateStockPrices]);
 
   useEffect(() => {
-    if (stocks.length === 0) return;
+    if (stocks.length === 0 || !autoRefreshEnabled) return;
     
     const interval = setInterval(() => {
       refreshPrices();
     }, 60000); // 60 seconds
     
     return () => clearInterval(interval);
-  }, [stocks.length, refreshPrices]);
+  }, [stocks.length, refreshPrices, autoRefreshEnabled]);
 
   const fetchStocks = async () => {
     const { data, error } = await supabase
@@ -276,14 +278,26 @@ const Dashboard = () => {
             />
           </div>
           
-          <Button 
-            variant="outline" 
-            onClick={handleRefreshPrices}
-            disabled={isRefreshing || stocks.length === 0}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="auto-refresh"
+                checked={autoRefreshEnabled}
+                onCheckedChange={setAutoRefreshEnabled}
+              />
+              <Label htmlFor="auto-refresh" className="text-sm text-muted-foreground whitespace-nowrap">
+                Auto-refresh
+              </Label>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={handleRefreshPrices}
+              disabled={isRefreshing || stocks.length === 0}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
+            </Button>
+          </div>
 
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
