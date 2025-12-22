@@ -46,7 +46,6 @@ const Dashboard = () => {
   const [editingStock, setEditingStock] = useState<Stock | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedStock, setExpandedStock] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState(60);
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { updateStockPrices, isRefreshing } = useStockPrices();
@@ -89,18 +88,11 @@ const Dashboard = () => {
   useEffect(() => {
     if (stocks.length === 0) return;
     
-    // Countdown timer
-    const countdownInterval = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          refreshPrices();
-          return 60;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const interval = setInterval(() => {
+      refreshPrices();
+    }, 60000); // 60 seconds
     
-    return () => clearInterval(countdownInterval);
+    return () => clearInterval(interval);
   }, [stocks.length, refreshPrices]);
 
   const fetchStocks = async () => {
@@ -205,7 +197,6 @@ const Dashboard = () => {
       return;
     }
     
-    setCountdown(60); // Reset countdown on manual refresh
     await updateStockPrices(
       stocks.map(s => ({ id: s.id, symbol: s.symbol })),
       (id, currentPrice) => {
@@ -284,13 +275,6 @@ const Dashboard = () => {
               className="pl-10"
             />
           </div>
-          
-          {stocks.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <RefreshCw className="w-3 h-3" />
-              <span>Auto-refresh in {countdown}s</span>
-            </div>
-          )}
           
           <Button 
             variant="outline" 
