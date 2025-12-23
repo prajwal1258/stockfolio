@@ -15,8 +15,18 @@ import {
   Edit2,
   Trash2,
   RefreshCw,
-  LineChart
+  LineChart,
+  Download,
+  FileText,
+  FileSpreadsheet
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportToCSV, exportToPDF } from "@/utils/exportPortfolio";
 import { useStockPrices } from "@/hooks/useStockPrices";
 import { StockPriceChart } from "@/components/StockPriceChart";
 import { Link, useNavigate } from "react-router-dom";
@@ -297,6 +307,25 @@ const Dashboard = () => {
               <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={stocks.length === 0}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportToCSV(stocks, { totalValue, totalInvested, totalGain, totalGainPercent })}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportToPDF(stocks, { totalValue, totalInvested, totalGain, totalGainPercent })}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
