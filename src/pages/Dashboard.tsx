@@ -18,7 +18,8 @@ import {
   LineChart,
   Download,
   FileText,
-  FileSpreadsheet
+  FileSpreadsheet,
+  PieChart
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -26,9 +27,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { exportToCSV, exportToPDF } from "@/utils/exportPortfolio";
 import { useStockPrices } from "@/hooks/useStockPrices";
 import { StockPriceChart } from "@/components/StockPriceChart";
+import { PortfolioAnalytics } from "@/components/PortfolioAnalytics";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -48,15 +57,39 @@ interface Stock {
   quantity: number;
   avg_price: number;
   current_price: number;
+  sector?: string;
 }
+
+interface PortfolioHistory {
+  recorded_at: string;
+  total_value: number;
+  total_invested: number;
+}
+
+const SECTORS = [
+  "Technology",
+  "Healthcare",
+  "Financial Services",
+  "Consumer Cyclical",
+  "Communication Services",
+  "Industrials",
+  "Consumer Defensive",
+  "Energy",
+  "Utilities",
+  "Real Estate",
+  "Basic Materials",
+  "Other"
+];
 
 const Dashboard = () => {
   const [stocks, setStocks] = useState<Stock[]>([]);
+  const [portfolioHistory, setPortfolioHistory] = useState<PortfolioHistory[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingStock, setEditingStock] = useState<Stock | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedStock, setExpandedStock] = useState<string | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(true);
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { updateStockPrices, isRefreshing } = useStockPrices();
@@ -69,6 +102,7 @@ const Dashboard = () => {
     quantity: "",
     avgPrice: "",
     currentPrice: "",
+    sector: "Other",
   });
 
   useEffect(() => {
@@ -80,6 +114,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       fetchStocks();
+      fetchPortfolioHistory();
     }
   }, [user]);
 
@@ -121,7 +156,46 @@ const Dashboard = () => {
     setIsLoading(false);
   };
 
-  const filteredStocks = stocks.filter(stock => 
+  const fetchPortfolioHistory = async () => {
+    const { data, error } = await supabase
+      .from("portfolio_history")
+      .select("*")
+      .order("recorded_at", { ascending: true });
+
+    if (!error && data) {
+      setPortfolioHistory(data);
+    }
+  };
+
+  // Record portfolio history daily
+  const recordPortfolioHistory = useCallback(async () => {
+    if (!user || stocks.length === 0) return;
+
+    const totalVal = stocks.reduce((sum, s) => sum + s.quantity * s.current_price, 0);
+    const totalInv = stocks.reduce((sum, s) => sum + s.quantity * s.avg_price, 0);
+
+    const { error } = await supabase
+      .from("portfolio_history")
+      .upsert({
+        user_id: user.id,
+        recorded_at: new Date().toISOString().split("T")[0],
+        total_value: totalVal,
+        total_invested: totalInv,
+      }, { onConflict: "user_id,recorded_at" });
+
+    if (!error) {
+      fetchPortfolioHistory();
+    }
+  }, [user, stocks]);
+
+  // Record portfolio history when stocks change
+  useEffect(() => {
+    if (stocks.length > 0 && user) {
+      recordPortfolioHistory();
+    }
+  }, [stocks, user, recordPortfolioHistory]);
+
+  const filteredStocks = stocks.filter(stock =>
     stock.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
     stock.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -144,12 +218,13 @@ const Dashboard = () => {
       quantity: Number(formData.quantity),
       avg_price: Number(formData.avgPrice),
       current_price: Number(formData.currentPrice),
+      sector: formData.sector,
     });
 
     if (error) {
       toast.error("Failed to add stock");
     } else {
-      setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "" });
+      setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "", sector: "Other" });
       setIsAddOpen(false);
       toast.success("Stock added successfully");
       fetchStocks();
@@ -168,6 +243,7 @@ const Dashboard = () => {
         quantity: Number(formData.quantity),
         avg_price: Number(formData.avgPrice),
         current_price: Number(formData.currentPrice),
+        sector: formData.sector,
       })
       .eq("id", editingStock.id);
 
@@ -175,7 +251,7 @@ const Dashboard = () => {
       toast.error("Failed to update stock");
     } else {
       setEditingStock(null);
-      setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "" });
+      setFormData({ symbol: "", name: "", quantity: "", avgPrice: "", currentPrice: "", sector: "Other" });
       toast.success("Stock updated successfully");
       fetchStocks();
     }
@@ -200,6 +276,7 @@ const Dashboard = () => {
       quantity: stock.quantity.toString(),
       avgPrice: stock.avg_price.toString(),
       currentPrice: stock.current_price.toString(),
+      sector: stock.sector || "Other",
     });
   };
 
@@ -367,6 +444,19 @@ const Dashboard = () => {
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Sector</Label>
+                  <Select value={formData.sector} onValueChange={(value) => setFormData({...formData, sector: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select sector" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SECTORS.map((sector) => (
+                        <SelectItem key={sector} value={sector}>{sector}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Avg. Buy Price ($)</Label>
@@ -396,6 +486,23 @@ const Dashboard = () => {
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* Analytics Toggle */}
+        <div className="flex items-center gap-2 mb-6">
+          <Button
+            variant={showAnalytics ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowAnalytics(!showAnalytics)}
+          >
+            <PieChart className="w-4 h-4 mr-2" />
+            {showAnalytics ? "Hide Analytics" : "Show Analytics"}
+          </Button>
+        </div>
+
+        {/* Portfolio Analytics */}
+        {showAnalytics && (
+          <PortfolioAnalytics stocks={stocks} portfolioHistory={portfolioHistory} />
+        )}
 
         {/* Stocks Table */}
         <div className="glass rounded-2xl overflow-hidden">
@@ -517,6 +624,19 @@ const Dashboard = () => {
                 value={formData.quantity}
                 onChange={(e) => setFormData({...formData, quantity: e.target.value})}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Sector</Label>
+              <Select value={formData.sector} onValueChange={(value) => setFormData({...formData, sector: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sector" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SECTORS.map((sector) => (
+                    <SelectItem key={sector} value={sector}>{sector}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
