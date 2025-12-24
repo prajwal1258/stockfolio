@@ -19,7 +19,8 @@ import {
   Download,
   FileText,
   FileSpreadsheet,
-  PieChart
+  PieChart,
+  Newspaper
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,6 +39,7 @@ import { exportToCSV, exportToPDF } from "@/utils/exportPortfolio";
 import { useStockPrices } from "@/hooks/useStockPrices";
 import { StockPriceChart } from "@/components/StockPriceChart";
 import { PortfolioAnalytics } from "@/components/PortfolioAnalytics";
+import { StockNewsFeed } from "@/components/StockNewsFeed";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -90,6 +92,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedStock, setExpandedStock] = useState<string | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(true);
+  const [showNews, setShowNews] = useState(true);
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { updateStockPrices, isRefreshing } = useStockPrices();
@@ -487,7 +490,7 @@ const Dashboard = () => {
           </Dialog>
         </div>
 
-        {/* Analytics Toggle */}
+        {/* Analytics & News Toggle */}
         <div className="flex items-center gap-2 mb-6">
           <Button
             variant={showAnalytics ? "default" : "outline"}
@@ -497,12 +500,29 @@ const Dashboard = () => {
             <PieChart className="w-4 h-4 mr-2" />
             {showAnalytics ? "Hide Analytics" : "Show Analytics"}
           </Button>
+          <Button
+            variant={showNews ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowNews(!showNews)}
+          >
+            <Newspaper className="w-4 h-4 mr-2" />
+            {showNews ? "Hide News" : "Show News"}
+          </Button>
         </div>
 
-        {/* Portfolio Analytics */}
-        {showAnalytics && (
-          <PortfolioAnalytics stocks={stocks} portfolioHistory={portfolioHistory} />
-        )}
+        {/* Portfolio Analytics & News */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {showAnalytics && (
+            <div className="lg:col-span-2">
+              <PortfolioAnalytics stocks={stocks} portfolioHistory={portfolioHistory} />
+            </div>
+          )}
+          {showNews && stocks.length > 0 && (
+            <div className={showAnalytics ? "" : "lg:col-span-3"}>
+              <StockNewsFeed symbols={stocks.map(s => s.symbol)} />
+            </div>
+          )}
+        </div>
 
         {/* Stocks Table */}
         <div className="glass rounded-2xl overflow-hidden">
