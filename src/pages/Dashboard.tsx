@@ -20,7 +20,8 @@ import {
   FileText,
   FileSpreadsheet,
   PieChart,
-  Newspaper
+  Newspaper,
+  Eye
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ import { useStockPrices } from "@/hooks/useStockPrices";
 import { StockPriceChart } from "@/components/StockPriceChart";
 import { PortfolioAnalytics } from "@/components/PortfolioAnalytics";
 import { StockNewsFeed } from "@/components/StockNewsFeed";
+import { Watchlist } from "@/components/Watchlist";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -68,6 +70,14 @@ interface PortfolioHistory {
   total_invested: number;
 }
 
+interface WatchlistItem {
+  id: string;
+  symbol: string;
+  name: string;
+  target_price: number | null;
+  notes: string | null;
+}
+
 const SECTORS = [
   "Technology",
   "Healthcare",
@@ -86,6 +96,7 @@ const SECTORS = [
 const Dashboard = () => {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioHistory[]>([]);
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingStock, setEditingStock] = useState<Stock | null>(null);
@@ -93,6 +104,7 @@ const Dashboard = () => {
   const [expandedStock, setExpandedStock] = useState<string | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(true);
   const [showNews, setShowNews] = useState(true);
+  const [showWatchlist, setShowWatchlist] = useState(true);
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { updateStockPrices, isRefreshing } = useStockPrices();
@@ -118,6 +130,7 @@ const Dashboard = () => {
     if (user) {
       fetchStocks();
       fetchPortfolioHistory();
+      fetchWatchlist();
     }
   }, [user]);
 
@@ -167,6 +180,17 @@ const Dashboard = () => {
 
     if (!error && data) {
       setPortfolioHistory(data);
+    }
+  };
+
+  const fetchWatchlist = async () => {
+    const { data, error } = await supabase
+      .from("watchlist")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setWatchlist(data);
     }
   };
 
@@ -508,9 +532,17 @@ const Dashboard = () => {
             <Newspaper className="w-4 h-4 mr-2" />
             {showNews ? "Hide News" : "Show News"}
           </Button>
+          <Button
+            variant={showWatchlist ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowWatchlist(!showWatchlist)}
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            {showWatchlist ? "Hide Watchlist" : "Show Watchlist"}
+          </Button>
         </div>
 
-        {/* Portfolio Analytics & News */}
+        {/* Portfolio Analytics, News & Watchlist */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {showAnalytics && (
             <div className="lg:col-span-2">
@@ -523,6 +555,18 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Watchlist */}
+        {showWatchlist && user && (
+          <div className="mb-6">
+            <Watchlist
+              items={watchlist}
+              onItemAdded={fetchWatchlist}
+              onItemDeleted={fetchWatchlist}
+              userId={user.id}
+            />
+          </div>
+        )}
 
         {/* Stocks Table */}
         <div className="glass rounded-2xl overflow-hidden">
