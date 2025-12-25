@@ -1,4 +1,5 @@
-Stockfolio is a comprehensive, real-time portfolio management solution designed for investors who need deep insights, automated data fetching, and seamless asset tracking. From sector-based analytics to personalized news feeds, Stockfolio centralizes your financial data into a single, high-performance dashboard.
+#Stockfolio 
+Stockfolio is a comprehensive, real-time portfolio tracker designed for investors who need deep insights, automated data fetching, and seamless asset tracking. From sector-based analytics to personalized news feeds, Stockfolio centralizes your financial data into a single, high-performance dashboard.
 
 🚀 Key Features
 📊 Portfolio Tracking & Real-time Analytics
