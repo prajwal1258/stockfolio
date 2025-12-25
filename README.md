@@ -1,44 +1,32 @@
-## How can I edit this code?
+Stockfolio is a comprehensive, real-time portfolio management solution designed for investors who need deep insights, automated data fetching, and seamless asset tracking. From sector-based analytics to personalized news feeds, Stockfolio centralizes your financial data into a single, high-performance dashboard.
 
-There are several ways of editing your application.
+🚀 Key Features
+📊 Portfolio Tracking & Real-time Analytics
+Auto-Refresh Engine: Your portfolio values update automatically via a dedicated background sync, ensuring you never make decisions on stale data.
 
-**Use your preferred IDE**
+30-Day Price Analytics: Interactive charts for every stock in your holdings, providing a clear visual of price action and trends over the last month.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes.
+API-Driven Refresh: A manual trigger endpoint allows you to force a real-time data fetch from financial providers at any moment.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+🔍 Smart Watchlist
+Direct Conversion: Spot an opportunity? Add quantities directly to your portfolio from your watchlist with a single click—no need to navigate through multiple menus.
 
-Follow these steps:
+Unified View: Keep a pulse on potential buys alongside your current winners.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+📈 Deep Portfolio Insights
+Sector Allocation: Gain a bird's-eye view of your diversification. Understand your exposure to Tech, Energy, Healthcare, etc., to manage risk effectively.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Performance Metrics: Detailed tracking of Gains/Losses, ROI, and historical performance.
 
-# Step 3: Install the necessary dependencies.
-npm i
+📰 Contextual News Feed
+Portfolio-Specific News: Don't get overwhelmed by market noise. Stockfolio filters news to show only stories relevant to the tickers you actually own.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+Auto-Update: The news feed refreshes automatically to keep you ahead of market-moving events.
 
-**Edit a file directly in GitHub**
+🛠️ Utility & UI
+Export to PDF: Generate professional-grade portfolio reports for tax purposes or personal archiving with one click.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
+Theme Switching: Full support for Dark Mode and Light Mode to suit your environment and reduce eye strain.
 
 This project is built with:
 
@@ -48,14 +36,23 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+⚙️ Installation
+1.Clone the repository:
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+git clone https://github.com/prajwal1258/stockfolio.git
 
-## Can I connect a custom domain to my Lovable project?
+2.Install dependencies:
 
-Yes, you can!
+npm install
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+3.Configure Environment Variables: Create a .env file and add your API keys:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+FINANCE_API_KEY=your_key_here
+DATABASE_URL=your_db_connection_string
+
+4.Run the application:
+
+npm run dev
+
+🌙 UI Preview
+Pro Tip: Toggle the theme in the top right corner. The Dark Mode is optimized for low-light environments to help you analyze charts comfortably at night.
