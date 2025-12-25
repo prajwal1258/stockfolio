@@ -563,6 +563,7 @@ const Dashboard = () => {
               items={watchlist}
               onItemAdded={fetchWatchlist}
               onItemDeleted={fetchWatchlist}
+              onStockPurchased={fetchStocks}
               userId={user.id}
             />
           </div>
