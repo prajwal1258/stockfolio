@@ -43,6 +43,7 @@ import { PortfolioAnalytics } from "@/components/PortfolioAnalytics";
 import { StockNewsFeed } from "@/components/StockNewsFeed";
 import { Watchlist } from "@/components/Watchlist";
 import { Link, useNavigate } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Dialog,
   DialogContent,
@@ -350,6 +351,7 @@ const Dashboard = () => {
           
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground hidden sm:inline">{user?.email}</span>
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
