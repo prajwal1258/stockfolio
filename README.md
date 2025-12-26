@@ -57,3 +57,6 @@ npm run dev
 
 🌙 UI Preview
 Pro Tip: Toggle the theme in the top right corner. The Dark Mode is optimized for low-light environments to help you analyze charts comfortably at night.
+
+You can access the Stockfolio from here: 
+https://stockfolio209.lovable.app/
