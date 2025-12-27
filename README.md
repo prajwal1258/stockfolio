@@ -55,8 +55,47 @@ DATABASE_URL=your_db_connection_string
 
 npm run dev
 
-🌙 UI Preview
-Pro Tip: Toggle the theme in the top right corner. The Dark Mode is optimized for low-light environments to help you analyze charts comfortably at night.
 
-You can access the Stockfolio from here: 
-https://stockfolio209.lovable.app/
+5.🚢 Migration to Supabase
+Follow these steps to migrate from Lovable Cloud to your own Supabase project:
+
+### 1. Supabase Project Setup
+1.  Create a new project on [Supabase.com](https://supabase.com/).
+2.  Go to **Project Settings > API** and copy your `Project URL` and `anon public` key.
+
+### 2. Environment Variables
+Update your `.env` file with the new credentials:
+```bash
+VITE_SUPABASE_URL=your_project_url
+VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_key
+VITE_SUPABASE_PROJECT_ID=your_project_id
+```
+
+### 3. Database Setup
+1.  Go to the **SQL Editor** in your Supabase Dashboard.
+2.  Copy the content from `database_setup.sql` (located in the artifacts or project root).
+3.  Run the script to create tables (`profiles`, `stocks`, `watchlist`, etc.) and set up RLS policies.
+
+### 4. Edge Functions Deployment
+The app uses Supabase Edge Functions for fetching stock data to secure API keys.
+
+1.  **Install Supabase CLI**:
+    ```bash
+    brew install supabase/tap/supabase
+    ```
+2.  **Login to CLI**:
+    ```bash
+    supabase login
+    ```
+3.  **Set Secrets** (Get keys from Finnhub & Alpha Vantage):
+    ```bash
+    supabase secrets set FINNHUB_API_KEY=your_key --project-ref your_project_id
+    supabase secrets set ALPHA_VANTAGE_API_KEY=your_key --project-ref your_project_id
+    ```
+4.  **Deploy Functions**:
+    ```bash
+    supabase functions deploy fetch-stock-prices --project-ref your_project_id
+    supabase functions deploy fetch-stock-news --project-ref your_project_id
+    ```
+
+
